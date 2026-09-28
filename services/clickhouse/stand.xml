@@ -1,0 +1,24 @@
+<clickhouse>
+    <!-- Хранилище стенда. Слушать нужно все адреса: к нему ходят другие
+         сервисы стенда и рабочая машина студента. Размеры фоновых пулов
+         не трогаем: они связаны с порогами мутаций, и рассогласование
+         не даёт серверу стартовать. -->
+    <listen_host>0.0.0.0</listen_host>
+    <max_server_memory_usage_to_ram_ratio>0.8</max_server_memory_usage_to_ram_ratio>
+    <mark_cache_size>268435456</mark_cache_size>
+    <!-- Журнал сервера (data/warehouse-log): по умолчанию уровень trace и до
+         десяти файлов по 1000 МБ, здесь — не больше 300 МБ на журнал. -->
+    <logger>
+        <level>information</level>
+        <size>100M</size>
+        <count>3</count>
+    </logger>
+    <!-- Регион подписи для объектного хранилища стенда: Garage проверяет регион
+         в подписи SigV4 и без совпадения отвечает 403. -->
+    <s3>
+        <stand>
+            <endpoint>http://s3:9000/</endpoint>
+            <region>stand</region>
+        </stand>
+    </s3>
+</clickhouse>

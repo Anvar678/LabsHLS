@@ -1,0 +1,4 @@
+# Код студента монтируется в /opt/dagster/project; определения (assets, jobs,
+# schedules) читаются из pipeline.py этого каталога.
+load_from:
+  - python_file: /opt/dagster/project/pipeline.py

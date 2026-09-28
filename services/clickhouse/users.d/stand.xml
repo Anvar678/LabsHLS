@@ -1,0 +1,10 @@
+<!-- Профиль пользователей стенда: подключение каталога таблиц Iceberg по REST
+     (DataLakeCatalog) в ClickHouse 26.3 закрыто настройкой сессии;
+     включена для всех, чтобы CREATE DATABASE работал без ключа клиента. -->
+<clickhouse>
+  <profiles>
+    <default>
+      <allow_database_iceberg>1</allow_database_iceberg>
+    </default>
+  </profiles>
+</clickhouse>

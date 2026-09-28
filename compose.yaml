@@ -1,0 +1,253 @@
+# Стенд курса «Технологии обработки больших данных».
+#
+# Вариант выбирает набор файлов: COMPOSE_FILE в .env перечисляет этот файл и по
+# одному файлу на ось (s3, engine, bi, broker, orchestrator, stream).
+# Работа выбирает профиль: `docker compose --profile lab4 up -d`.
+# Разовая подготовка каталогов данных: `docker compose run --rm stand-init`.
+#
+# Имена сервисов — роли, а не продукты: тексты работ ссылаются на `s3`,
+# `catalog`, `engine`, `warehouse`, `broker`, `registry`, `bi`, `orchestrator`,
+# `stream`, `collector`. Порты роли одинаковы у всех вариантов (таблица ролей
+# и портов — README.md).
+#
+# Готовые файлы не правятся: код студента живёт в collector/src, jobs, dags,
+# schemas и conf, а исправления стенда приходят командой `git pull`.
+
+name: bigdata-stand
+
+networks:
+  stand:
+    name: bigdata-stand
+
+# Журнал контейнера ограничен: служба сборщика работает восемь недель, а место
+# на диске стенда рассчитано по слоям данных. Якорь повторяется в каждом файле.
+x-logging: &logging
+  driver: json-file
+  options: {max-size: 10m, max-file: "3"}
+
+services:
+
+  # --- разовая подготовка каталогов данных ----------------------------------
+  # Сервисы работают от разных пользователей, поэтому каталоги на диске стенда
+  # раздаются им один раз: `docker compose run --rm stand-init` (профиль init
+  # `run` включает сам; `--profile init up` остался бы присоединённым к сборщику).
+  # Повторный запуск возвращает владельцев. Права каталогов PostgreSQL
+  # (catalog-db, bi-datalens) выставляют сами сервисы.
+  stand-init:
+    image: alpine:3.24.2
+    container_name: stand-init
+    profiles: [init]
+    restart: "no"
+    user: "0:0"
+    network_mode: none
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+        cd /stand
+        dirs="raw raw/stream raw/history duckdb duckdb/parquet spark stream stream/flink stream/spark
+              s3-seaweedfs s3-garage s3-garage/meta s3-garage/data warehouse warehouse-log engine
+              broker-kafka broker-redpanda orchestrator orchestrator/airflow orchestrator/dagster
+              bi-metabase bi-superset"
+        mkdir -p $$dirs catalog-db bi-datalens
+        chown -R 1000:1000  raw duckdb bi-superset broker-kafka  # сборщик, встраиваемый движок, Superset, Kafka
+        chown -R 185:185    spark stream/spark        # пакетный движок и его потоковое задание
+        chown -R 9999:9999  stream/flink              # Flink
+        chown -R 101:101    broker-redpanda           # Redpanda
+        chown -R 50000:0    orchestrator/airflow      # Airflow
+        chown -R 2000:2000  bi-metabase               # Metabase
+        chown -R 999:999    bi-datalens               # PostgreSQL DataLens
+        chown    1000:1000  .                         # сам каталог — пользователю рабочей машины
+        chmod    u+rwx,g+rwx . $$dirs
+        echo "каталоги данных стенда подготовлены"
+    volumes: ["./data:/stand"]
+
+  # --- постоянно работающий: сборщик данных студента -------------------------
+  # Без профиля: поднимается с любым профилем работы. Режим службы — COLLECTOR_MODE
+  # в .env: record (запись) с работы 1, produce (запись и отправка в брокер) с работы 6.
+  # Сборщику виден весь .env: переменные программы студент заводит там же.
+  # Предел памяти — без подкачки: программа читает ответы и архивы потоком.
+  collector:
+    build:
+      context: ./collector
+    image: bigdata-stand/collector:1
+    container_name: collector
+    hostname: collector
+    restart: unless-stopped
+    command: ["${COLLECTOR_MODE:-record}"]
+    env_file: [.env]
+    environment:
+      COLLECTOR_RAW_DIR: /data/raw
+      COLLECTOR_METRICS_PORT: "9101"
+    volumes:
+      - ${COLLECTOR_SRC:-./collector/src}:/app/src:ro
+      - ./data/raw:/data/raw
+    ports: ["${PORT_COLLECTOR:-9101}:9101"]
+    networks: [stand]
+    mem_limit: 512m
+    memswap_limit: 512m
+    logging: *logging
+
+  # --- каталог таблиц Iceberg (одинаков у всех вариантов) -------------------
+  catalog-db:
+    image: postgres:17.11-alpine
+    container_name: catalog-db
+    profiles: [lab4, lab5, lab6, lab7, lab8, lab9]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: catalog
+      POSTGRES_PASSWORD: catalog
+      POSTGRES_DB: catalog
+    volumes:
+      - ./data/catalog-db:/var/lib/postgresql/data
+      - ./services/postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U catalog"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [stand]
+    mem_limit: 512m
+    logging: *logging
+
+  catalog:
+    image: quay.io/lakekeeper/catalog:v0.13.6
+    container_name: catalog
+    profiles: [lab4, lab5, lab6, lab7, lab8, lab9]
+    restart: unless-stopped
+    depends_on:
+      catalog-db: {condition: service_healthy}
+      catalog-init: {condition: service_completed_successfully}
+    command: ["serve"]
+    environment:
+      LAKEKEEPER__PG_ENCRYPTION_KEY: bigdata-stand
+      LAKEKEEPER__PG_DATABASE_URL_READ: postgresql://catalog:catalog@catalog-db:5432/catalog
+      LAKEKEEPER__PG_DATABASE_URL_WRITE: postgresql://catalog:catalog@catalog-db:5432/catalog
+      RUST_LOG: info
+    ports: ["${PORT_CATALOG:-8181}:8181"]
+    healthcheck:
+      test: ["CMD", "/home/nonroot/lakekeeper", "healthcheck"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+    networks: [stand]
+    mem_limit: 1g
+    logging: *logging
+
+  # Схема базы каталога: одноразово перед запуском сервера.
+  catalog-init:
+    image: quay.io/lakekeeper/catalog:v0.13.6
+    container_name: catalog-init
+    profiles: [lab4, lab5, lab6, lab7, lab8, lab9]
+    restart: "no"
+    depends_on:
+      catalog-db: {condition: service_healthy}
+    command: ["migrate"]
+    environment:
+      LAKEKEEPER__PG_ENCRYPTION_KEY: bigdata-stand
+      LAKEKEEPER__PG_DATABASE_URL_READ: postgresql://catalog:catalog@catalog-db:5432/catalog
+      LAKEKEEPER__PG_DATABASE_URL_WRITE: postgresql://catalog:catalog@catalog-db:5432/catalog
+      RUST_LOG: info
+    networks: [stand]
+    logging: *logging
+
+  # Первичная настройка каталога: bootstrap и склад варианта над bucket'ом
+  # объектного хранилища (services/lakekeeper/init.py). Идемпотентно: при
+  # каждом запуске профиля проверяет, что склад есть, и ничего не меняет.
+  # От `s3-init` не зависит: тот живёт в файле оси `s3`, которого в работах 1–2
+  # нет, а ссылка на неизвестный сервис ломает проект у Compose 2.24;
+  # bucket скрипт ждёт сам.
+  catalog-bootstrap:
+    image: python:3.13.15-slim
+    container_name: catalog-bootstrap
+    profiles: [lab4, lab5, lab6, lab7, lab8, lab9]
+    restart: "no"
+    depends_on:
+      catalog: {condition: service_started}
+    environment:
+      CATALOG_URI: ${CATALOG_URI}
+      CATALOG_WAREHOUSE: ${CATALOG_WAREHOUSE}
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_REGION: ${S3_REGION}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET}
+    volumes: ["./services/lakekeeper/init.py:/init.py:ro"]
+    command: ["python", "/init.py"]
+    networks: [stand]
+    logging: *logging
+
+  # --- аналитическое хранилище (одинаково у всех вариантов) -----------------
+  warehouse:
+    image: clickhouse/clickhouse-server:26.3.32.14-alpine
+    container_name: warehouse
+    profiles: [lab5, lab7, lab8, lab9]
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_USER: ${WAREHOUSE_USER:-student}
+      CLICKHOUSE_PASSWORD: ${WAREHOUSE_PASSWORD:-student}
+      CLICKHOUSE_DB: ${WAREHOUSE_DB:-mart}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    ulimits:
+      nofile: {soft: 262144, hard: 262144}
+    volumes:
+      - ./data/warehouse:/var/lib/clickhouse
+      - ./data/warehouse-log:/var/log/clickhouse-server
+      - ./services/clickhouse:/etc/clickhouse-server/config.d:ro
+      - ./services/clickhouse/users.d/stand.xml:/etc/clickhouse-server/users.d/stand.xml:ro
+    ports: ["${PORT_WAREHOUSE_HTTP:-8123}:8123", "${PORT_WAREHOUSE_NATIVE:-9002}:9000"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8123/ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+    networks: [stand]
+    mem_limit: 4g
+    logging: *logging
+
+  # --- пакетный движок и инструмент обслуживания таблиц ---------------------
+  # Запускается по требованию: `docker compose run --rm --service-ports spark
+  # spark-sql ...`; веб-интерфейс задания — на 4040, пока задание идёт.
+  # Подключение к каталогу таблиц и хранилищу — файл студента
+  # conf/spark/spark-defaults.conf (services/spark/entrypoint.sh).
+  # Сервисам, которые запускает `run`, виден весь .env: контейнер создаётся
+  # заново на каждый запуск, и правка .env ничего работающего не перезапускает.
+  spark:
+    build:
+      context: ./services/spark
+    image: bigdata-stand/spark:2
+    container_name: spark
+    profiles: [tools]
+    env_file: [.env]
+    environment:
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+    volumes:
+      - ./data/spark:/home/spark/work
+      - ${JOBS_DIR:-./jobs}:/opt/jobs:ro
+      - ${CONF_DIR:-./conf}/spark:/opt/stand/conf/spark:ro
+    ports: ["${PORT_SPARK_UI:-4040}:4040"]
+    networks: [stand]
+    mem_limit: 3g
+    logging: *logging
+
+  # --- встраиваемый движок запросов (работы 2–3, ось engine=duckdb) ---------
+  # Запускается по требованию: `docker compose run --rm duckdb`; рабочий
+  # каталог — data/duckdb на диске стенда, слой сырых данных смонтирован на чтение.
+  # DuckDB берёт 80 % предела памяти контейнера, остальное сбрасывает на диск.
+  duckdb:
+    build:
+      context: ./services/duckdb
+    image: bigdata-stand/duckdb:1
+    container_name: duckdb
+    profiles: [tools]
+    user: "1000:1000"
+    env_file: [.env]
+    working_dir: /data/duckdb
+    volumes:
+      - ./data/raw:/data/raw:ro
+      - ./data/duckdb:/data/duckdb
+    networks: [stand]
+    mem_limit: 3g
+    logging: *logging

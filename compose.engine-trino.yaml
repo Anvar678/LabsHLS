@@ -1,0 +1,42 @@
+# Ось engine, значение trino. Роль `engine`: веб-интерфейс и SQL на 8080.
+# Каталоги Trino — файлы студента conf/trino/<каталог>.properties: имя файла —
+# имя каталога, учётные данные — ссылки ${ENV:ИМЯ} на переменные ниже.
+# Trino читает каталоги при старте: после правки — `docker compose restart engine`.
+x-logging: &logging
+  driver: json-file
+  options: {max-size: 10m, max-file: "3"}
+
+services:
+  engine:
+    image: trinodb/trino:483
+    container_name: engine
+    hostname: engine
+    profiles: [lab4, lab5, lab7, lab9]
+    restart: unless-stopped
+    # Только адреса и ключи стенда, а не весь .env: правка остальных строк .env
+    # не пересоздаёт сервис.
+    environment:
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_REGION: ${S3_REGION}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET}
+      CATALOG_URI: ${CATALOG_URI}
+      CATALOG_WAREHOUSE: ${CATALOG_WAREHOUSE}
+      WAREHOUSE_HOST: ${WAREHOUSE_HOST}
+      WAREHOUSE_USER: ${WAREHOUSE_USER}
+      WAREHOUSE_PASSWORD: ${WAREHOUSE_PASSWORD}
+      WAREHOUSE_DB: ${WAREHOUSE_DB}
+    volumes:
+      - ${CONF_DIR:-./conf}/trino:/etc/trino/catalog:ro
+    ports: ["${PORT_ENGINE:-8080}:8080"]
+    # Готов — когда сервер закончил запуск: /v1/info отвечает и во время
+    # запуска, и между перезапусками из-за ошибки в каталоге.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/v1/info | grep -q '\"starting\":false'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    networks: [stand]
+    mem_limit: 4g
+    logging: *logging

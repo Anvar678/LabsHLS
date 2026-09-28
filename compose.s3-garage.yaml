@@ -1,0 +1,46 @@
+# Ось s3, значение garage. Роль `s3`: API на 9000, административный API на
+# 9001 (веб-интерфейса у Garage нет — работа идёт клиентом S3 и CLI).
+x-logging: &logging
+  driver: json-file
+  options: {max-size: 10m, max-file: "3"}
+
+services:
+  s3:
+    image: dxflrs/garage:v2.4.1
+    container_name: s3
+    hostname: s3
+    profiles: [lab3, lab4, lab5, lab6, lab7, lab8, lab9]
+    restart: unless-stopped
+    volumes:
+      - ./data/s3-garage/meta:/var/lib/garage/meta
+      - ./data/s3-garage/data:/var/lib/garage/data
+      - ./services/garage/garage.toml:/etc/garage.toml:ro
+    ports: ["${PORT_S3:-9000}:9000", "${PORT_S3_UI:-9001}:9001"]
+    healthcheck:
+      test: ["CMD", "/garage", "status"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+    networks: [stand]
+    mem_limit: 2g
+    logging: *logging
+
+  # Раскладка узла, ключ доступа и bucket озера — через административный API
+  # (services/garage/init.py). Идемпотентно: повторный запуск ничего не меняет.
+  s3-init:
+    image: python:3.13.15-slim
+    container_name: s3-init
+    profiles: [lab3, lab4, lab5, lab6, lab7, lab8, lab9]
+    restart: "no"
+    depends_on:
+      s3: {condition: service_started}
+    environment:
+      GARAGE_ADMIN_URL: http://s3:9001
+      GARAGE_ADMIN_TOKEN: stand-admin
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET}
+    volumes: ["./services/garage/init.py:/init.py:ro"]
+    command: ["python", "/init.py"]
+    networks: [stand]
+    logging: *logging

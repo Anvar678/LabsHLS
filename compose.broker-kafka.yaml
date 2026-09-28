@@ -1,0 +1,78 @@
+# Ось broker, значение kafka. Роли `broker` (9092) и `registry` (8081):
+# у Kafka реестр схем отдельным сервисом (Karapace — совместим по API
+# со встроенным реестром Redpanda, поэтому код студента не зависит от оси).
+# Два listener'а: изнутри стенда брокер отвечает по broker:9092, программам на
+# стенде вне контейнеров — по localhost:$PORT_BROKER. Внешний адрес объявлен
+# как localhost, поэтому клиенты брокера запускаются на самом стенде.
+x-logging: &logging
+  driver: json-file
+  options: {max-size: 10m, max-file: "3"}
+
+services:
+  broker:
+    image: apache/kafka:4.3.1
+    container_name: broker
+    hostname: broker
+    profiles: [lab6, lab8]
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: INTERNAL://:9092,EXTERNAL://:9094,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://broker:9092,EXTERNAL://localhost:${PORT_BROKER:-9092}
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@broker:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_HEAP_OPTS: -Xmx768m -Xms256m
+    volumes: ["./data/broker-kafka:/var/lib/kafka/data"]
+    ports: ["${PORT_BROKER:-9092}:9094"]
+    # Проба — клиент на JVM: раз в 30 с и со своей кучей, а не с кучей брокера.
+    healthcheck:
+      test: ["CMD-SHELL", "KAFKA_HEAP_OPTS=-Xmx128m /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 20s
+      retries: 20
+    networks: [stand]
+    mem_limit: 1500m
+    logging: *logging
+
+  registry:
+    image: ghcr.io/aiven-open/karapace:6.2.3
+    container_name: registry
+    hostname: registry
+    profiles: [lab6, lab8]
+    restart: unless-stopped
+    depends_on:
+      broker: {condition: service_healthy}
+    entrypoint: ["python3", "-m", "karapace"]
+    environment:
+      KARAPACE_KARAPACE_REGISTRY: "true"
+      KARAPACE_BOOTSTRAP_URI: broker:9092
+      KARAPACE_HOST: 0.0.0.0
+      KARAPACE_PORT: "8081"
+      KARAPACE_ADVERTISED_HOSTNAME: registry
+      KARAPACE_CLIENT_ID: registry
+      KARAPACE_GROUP_ID: registry
+      KARAPACE_MASTER_ELIGIBILITY: "true"
+      KARAPACE_TOPIC_NAME: _schemas
+      KARAPACE_COMPATIBILITY: BACKWARD
+      KARAPACE_LOG_LEVEL: WARNING
+    ports: ["${PORT_REGISTRY:-8081}:8081"]
+    # Штатная проверка образа собирает адрес без схемы и всегда падает;
+    # готовность — по /_health: реестр прочитал тему схем и выбран главным
+    # (до выбора регистрация схемы зависает и падает по тайм-ауту).
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request, sys; b = urllib.request.urlopen('http://127.0.0.1:8081/_health', timeout=5).read(); sys.exit(0 if b'\"schema_registry_ready\":true' in b and b'\"schema_registry_is_primary\":true' in b else 1)"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+    networks: [stand]
+    mem_limit: 768m
+    logging: *logging

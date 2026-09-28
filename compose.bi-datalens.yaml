@@ -1,0 +1,314 @@
+# Ось bi, значение datalens. Роль `bi`: веб-интерфейс на 8088, вход
+# admin / student. Девять контейнеров по docker-compose.yaml проекта
+# datalens-tech/datalens, коммит 1cebb39 ветки main (2026-08-24, после выпуска
+# 2.9.0). Ключи и токены — значения по умолчанию upstream, вместе с
+# заголовком ключа в четыре дефиса: стенд живёт на машине студента и наружу
+# не смотрит. Собственный PostgreSQL — data/bi-datalens.
+x-logging: &logging
+  driver: json-file
+  options: {max-size: 10m, max-file: "3"}
+
+services:
+  bi:
+    image: ghcr.io/datalens-tech/datalens-ui:0.3831.0
+    container_name: bi
+    hostname: bi
+    profiles:
+      - lab5
+      - lab8
+      - lab9
+    restart: unless-stopped
+    depends_on:
+      bi-us:
+        condition: service_started
+    environment:
+      APP_MODE: full
+      APP_ENV: production
+      APP_INSTALLATION: opensource
+      AUTH_POLICY: disabled
+      US_ENDPOINT: http://bi-us:8080
+      AUTH_ENDPOINT: http://bi-auth:8080
+      BI_API_ENDPOINT: http://bi-control-api:8080
+      BI_DATA_ENDPOINT: http://bi-data-api:8080
+      META_MANAGER_ENDPOINT: http://bi-meta-manager:8080
+      US_MASTER_TOKEN: us-master-token
+      US_DYNAMIC_MASTER_TOKEN_PRIVATE_KEY: ----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCu1vvLrYaTUDId\nx6gvTKxfAnqjI5vreR8CFfHFg16fh6ud/IQCAoJ0xOObplWPQ8VmcaG0NAOur774\nf/1hzXxep3fT6Hv+CM3lcDgxU7nPsCfzrg2bOdGirqSsJVqe6ISCyEn/+nt3W2Oi\nkfoHlicSly8YMs6rMccqEViQVa915j4ZRM04a/BpU1UJNXi3OKTbLA+it0h/l+un\n77+iakVWWS3D/NRD4NRgsHGW/NFdAI894cDc1jc/D4TLbHcxnw0IaKH/H/CLrKIS\nEjC8I1Ou9I5sIQ6St75dT3Ar9QDi8jV/o9d5acq0p+FZK27t0yIv3JATpqHnit80\npNufnZ0NAgMBAAECggEAAT8OEhsdY6JwNlnMf0h8IryT9DgWQ0eclXljklAH63oz\nmnozf1zWN4/fEXvOOKm32ALvr1GpmblYp/vS6hC6wLqlNjD+OpwvH4y9Ec5He6Kv\n/jgw56OHX4dVgYFN/pD+FNKUWHXyzbHXPtBB6IOaVAhuMQLNCgJeVD9FvYL8L7Ue\nmsN5602Bsrs40fEDyxYkVQVUw+NgYVx5OVhxKKEbZ+2f6I5MGH0dH4AtQ824N+pP\njMhja6ZwlvVn3E35yZ98Zx8OigDvkwlv+91tW0siUpF4Vgx5Ruj/91i1kDCnhKwU\n+EWbVXN3RKNJleZEaR/gTl2Le5qpILD+pjspm5QcnwKBgQDZbL927WYOpd2jo0EX\nU5PDvDyVkIgbQMY3/jIbAZWy0yNLTZcIn1Y5A/OunwptC5GHjYtMquA96yRjZ9G0\nIA0sHWJ4AFFulsbufuDzicjzCx/zOltb5SOXzvlzawwu0xZb1VQRLN9igM4n7J2d\noVyGE8HW2hV8iYnDe5oL5OH1ewKBgQDN3A9UOOOKgOxlDCz32MP59wacBGgz36Qs\nIth99MzhleqgVNue00eCRmExrA89hRxlEaOEVu9bp8M6BkNO14QqMqZFLcOwF/Y4\nkcehcr8NPEimDW98Zl8nvHP+RSDf8qtd/gUZeDcVrI8q2H8I4xfYtlowsfQc3Ppv\n5bb3gkL9FwKBgAlQ14NI+K53/N8eB5PwSMyCLDZcUviX9eZARfVSRA+9bC21zVrZ\nOOCIgtBgkBnL/RhJwEYwrBr7EDwSHrIRDX9uYuGxYcvTOgLN/OVyaeHAAEZzoaZ2\nUugWPinr1EHNWY/lvAxgV9Hoouyi/r3aRBSalBuYjIMhgX2Wtir8S5IxAoGAdbne\njlTGU8Ps7NCsusSdNss9XWXrzZadBZyb4FRqAqxAdJZyzn6XS3pCRSzXvl/sYCRZ\nNeqdkfX74KgKQAFiFNvIWJGWcpMRfUJpPvwnJEOQbF4MnsDQtCHC1+vipA/cTrFh\nazJjliKL8X3EEGoGjimipGxwZT0+f1WIcD1vX9sCgYEAnQXSgURkk/RODt9Zzd8k\nW3/bQUGYtCrzE6P65osx8nVZNNEbcOoL4MxYSpSr4F+DGbNqQ4XkJW3I3xEI47oR\nF9wla5slb9AUjDtS5HrWnxpxyvhFVd6Z4I5Ej7j9i0wSCEWY/Ij50+WJTz2MifFz\ngMR9BUcBxbrA9gJyt0zoXCI=\n-----END PRIVATE KEY-----
+      RELEASE_VERSION: 2.9.0
+      HC: "0"
+      HC_ENDPOINT: ""
+      HC_PROTOCOL: ""
+      HC_MODULES: ""
+      YANDEX_MAP_ENABLED: "0"
+      YANDEX_MAP_TOKEN: ""
+      EXPORT_WORKBOOK_ENABLED: "true"
+      AUTH_ENABLED: "true"
+      AUTH_MASTER_TOKEN: auth-master-token
+      AUTH_TOKEN_PUBLIC_KEY: -----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA+HICDZMfimMIiGdd0dPr\n2N3zxHOJqiVXuvUj/aBBS7c8760rJUh4344sP/0Gid558yH/v1MtzZ0R9w09v6gb\nSNrSiNwIUNGPhbnm9Jf+kMezsI/rkcIdoVm3KJ8CFUYy6MRPzW7iJmIVRHBb82v1\nmAYCCQFU6IRtFIa9hQ8wedWwxqXZekSNS+6NB37dmmQB9kz2E3MY+KRLigOh4i3p\nCZ1ti3HVvMa9Rlgk9FmoWExzub5ECChqwm+vn8yFXjYW7kUSClcV2xx4nbQWqjrR\nyyLk6W2BNOuCFVvz0j+5XkpLAt7tljtVZc+572HBEKpF2mAdmAip5NzeDhKqucJ+\nZQIDAQAB\n-----END PUBLIC KEY-----
+      AUTH_SIGNUP_DISABLED: "true"
+    ports:
+      - ${PORT_BI:-8088}:8080
+    networks:
+      - stand
+    mem_limit: 768m
+    logging: *logging
+  bi-ui-api:
+    image: ghcr.io/datalens-tech/datalens-ui:0.3831.0
+    container_name: bi-ui-api
+    hostname: bi-ui-api
+    profiles:
+      - lab5
+      - lab8
+      - lab9
+    restart: unless-stopped
+    depends_on:
+      bi-us:
+        condition: service_started
+    environment:
+      APP_MODE: api
+      APP_ENV: production
+      APP_INSTALLATION: opensource
+      US_ENDPOINT: http://bi-us:8080
+      BI_API_ENDPOINT: http://bi-control-api:8080
+    networks:
+      - stand
+    mem_limit: 512m
+    logging: *logging
+  bi-us:
+    image: ghcr.io/datalens-tech/datalens-us:1.39.0
+    container_name: bi-us
+    hostname: bi-us
+    profiles:
+      - lab5
+      - lab8
+      - lab9
+    restart: unless-stopped
+    depends_on:
+      bi-db:
+        condition: service_healthy
+    environment:
+      APP_INSTALLATION: opensource
+      APP_ENV: prod
+      APP_PORT: "8080"
+      AUTH_ENDPOINT: http://bi-auth:8080
+      MASTER_TOKEN: us-master-token
+      BI_MASTER_TOKEN_PUBLIC_KEY_PRIMARY: ----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAv7fEloR44WfcGPl5IHwJ\nHAiVEDc7gGjGTdNjAcNl1NNDS0W9QL0c4ifIDTa9JJf+OSmGL1AMPPvjjc1910Ta\npshKIZFPzm9g0zAS/fXXMm2hhoZg6dgKmhg+Mz1fcB3xG5S0WTLbaks0vO3HUF+p\nCY+0giJGICm1rLzxMmTkPRxX3TEohqvlxCc1MvoDL3wpEtRLoyEbhXOnK3QUMVaJ\nNysUCaz7lll1tad3k8Q8ixm2jVD5HW9gYbLEHBtgA8MUGrcUaXyyWtz18d4oK9O5\nExNkxvoQ+ALkGvpSBXk7bVMRvXB1RRQR9r6Yj5T3Z0DlmUMuw4jBP6WiGZZxN2zM\ngwIDAQAB\n-----END PUBLIC KEY-----
+      UI_MASTER_TOKEN_PUBLIC_KEY_PRIMARY: ----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArtb7y62Gk1AyHceoL0ys\nXwJ6oyOb63kfAhXxxYNen4ernfyEAgKCdMTjm6ZVj0PFZnGhtDQDrq+++H/9Yc18\nXqd30+h7/gjN5XA4MVO5z7An864NmznRoq6krCVanuiEgshJ//p7d1tjopH6B5Yn\nEpcvGDLOqzHHKhFYkFWvdeY+GUTNOGvwaVNVCTV4tzik2ywPordIf5frp++/ompF\nVlktw/zUQ+DUYLBxlvzRXQCPPeHA3NY3Pw+Ey2x3MZ8NCGih/x/wi6yiEhIwvCNT\nrvSObCEOkre+XU9wK/UA4vI1f6PXeWnKtKfhWStu7dMiL9yQE6ah54rfNKTbn52d\nDQIDAQAB\n-----END PUBLIC KEY-----
+      AUTH_MASTER_TOKEN: auth-master-token
+      POSTGRES_DSN_LIST: postgres://pg-user:postgres@bi-db:5432/pg-us-db
+      US_SURPRESS_DB_STATUS_LOGS: "true"
+      SKIP_INSTALL_DB_EXTENSIONS: "1"
+      USE_DEMO_DATA: "0"
+      HC: "0"
+      AUTH_ENABLED: "true"
+      AUTH_TOKEN_PUBLIC_KEY: -----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA+HICDZMfimMIiGdd0dPr\n2N3zxHOJqiVXuvUj/aBBS7c8760rJUh4344sP/0Gid558yH/v1MtzZ0R9w09v6gb\nSNrSiNwIUNGPhbnm9Jf+kMezsI/rkcIdoVm3KJ8CFUYy6MRPzW7iJmIVRHBb82v1\nmAYCCQFU6IRtFIa9hQ8wedWwxqXZekSNS+6NB37dmmQB9kz2E3MY+KRLigOh4i3p\nCZ1ti3HVvMa9Rlgk9FmoWExzub5ECChqwm+vn8yFXjYW7kUSClcV2xx4nbQWqjrR\nyyLk6W2BNOuCFVvz0j+5XkpLAt7tljtVZc+572HBEKpF2mAdmAip5NzeDhKqucJ+\nZQIDAQAB\n-----END PUBLIC KEY-----
+    networks:
+      - stand
+    mem_limit: 512m
+    logging: *logging
+  bi-control-api:
+    image: ghcr.io/datalens-tech/datalens-control-api:0.2457.0
+    container_name: bi-control-api
+    hostname: bi-control-api
+    profiles:
+      - lab5
+      - lab8
+      - lab9
+    restart: unless-stopped
+    environment:
+      BI_API_UWSGI_WORKERS_COUNT: "4"
+      RQE_FORCE_OFF: "1"
+      RQE_SECRET_KEY: ""
+      DL_CRY_ACTUAL_KEY_ID: KEY
+      DL_CRY_KEY_VAL_ID_KEY: ZGF0YWxlbnN1bnNlY3VyZWZlcm5ldGNyeXB0b2tleQo=
+      US_HOST: http://bi-us:8080
+      US_MASTER_TOKEN: us-master-token
+      US_DYNAMIC_AUTH_PRIVATE_KEY: ----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQC/t8SWhHjhZ9wY\n+XkgfAkcCJUQNzuAaMZN02MBw2XU00NLRb1AvRziJ8gNNr0kl/45KYYvUAw8++ON\nzX3XRNqmyEohkU/Ob2DTMBL99dcybaGGhmDp2AqaGD4zPV9wHfEblLRZMttqSzS8\n7cdQX6kJj7SCIkYgKbWsvPEyZOQ9HFfdMSiGq+XEJzUy+gMvfCkS1EujIRuFc6cr\ndBQxVok3KxQJrPuWWXW1p3eTxDyLGbaNUPkdb2BhssQcG2ADwxQatxRpfLJa3PXx\n3igr07kTE2TG+hD4AuQa+lIFeTttUxG9cHVFFBH2vpiPlPdnQOWZQy7DiME/paIZ\nlnE3bMyDAgMBAAECggEAEj1Og69ovLEf3HRnlLKYP0WFwPwwOgA91Yul4LYRSxUq\nUs/4uF8Fj3KPcsphZkjbk96ieH/aGjcwp/4D2eYgEzv86YKkoBQylwT82ZJ4/cA2\nXNEOCVFXeN+Tk1ZkbQs8NA6Kte3DuDIde1f33Wqsb09vse3G1CqDsUJshAnbOQD9\n9i7r2WiG9dhLrC8kKDgvk86cLOhkS9Uc/iVz4s/MndHM8oV7ZirK+txCo5qUim2D\ngiclwpJy22UbWI3P3pMui41gFRNqei2HvroOsXlK59PEkUl7t2ffr6uPN4VfarfK\nA4QUab9J2YrfJ6NF8+tKtJmRSrE2mVVHv/YEJd8pyQKBgQDzxlM8c+xJ+9vi/X/E\nogCMX1b0nh8rApiyB7dlXjFDZA28HCpCANftSlEkGiYfRLdraEGgeboCxhxkHlw2\nWQsi0q43zOW9lZ8YNJ20FoK1uQ4xgoN3+I5F74d+tkKKpgEOPkypLFzcR5477Q0M\nXUpItLE33Q01Z56D/Fc5X7HKpQKBgQDJVR3O03Y4xmUgLg22bcWGnKdC67E1xIg7\nVsuq/thFOXTZSj6Hq9V91yWmtNCmx5fLoXC9nSvs0406w9kDI1iuh/dNwCA7sfwi\ndfDyZgnCzX2G0b5eKmDn7flL+ig9kIoxWLSIEdSAQNrHsdQEMy0SaCbOXWiQtReJ\novv1s7WaBwKBgQDVCv9Vds4LPmRF9VuDQj2OcAfzknkUwpkmBZ5epboR9lAWlNrN\ngiUzSN6u2Xd1nj1aTewEzj0lDXRkfzABg0I7NbpyI8yoKim3IsysRXwISuk/lZtF\n7uCP+C0HLUvsFfYYN5QRySaCkMiWAK6FnsY70kaK1tIjWSJsoMyt5JbhzQKBgQCL\nqHx93Rfz+ENr2CZw9qJ/ZylrdX0+0+7AYsvy+Mbi9iFFHYhUqnD00wpuIp1eI7P7\ncCh5j45JwNIGApcF4z4AC5cUGwMBBczlxrR2ISwCMnMx00rfnTwNhnlZJ9VEJ4CF\nDIhmnx+uO87HmWZ951YLn63Tlt4TC1uhgSqQXLHLfwKBgQDcB8xT4cFQeMl7s/UQ\nXADCPT5cMESI68ZVUXVFVYYQ/ysABoZ021oK2YQFbFBBEtwZuwpULZns1HxcaaYJ\nl8XZGyVYgJ9wtdxd/LP07aly6Bc4fUNQN+FegbYDWXka/5YNXYnN3HIcGH1ywWpB\npfbgT6nJ84w3xsyB+nw93ZzXkw==\n-----END PRIVATE KEY-----
+      CONNECTOR_AVAILABILITY_VISIBLE: clickhouse,postgres,chyt,ydb,mysql,greenplum,mssql,oracle,trino,appmetrica_api,metrika_api
+      AUTH__TYPE: NATIVE
+      AUTH__JWT_ALGORITHM: PS256
+      AUTH__JWT_KEY: -----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA+HICDZMfimMIiGdd0dPr\n2N3zxHOJqiVXuvUj/aBBS7c8760rJUh4344sP/0Gid558yH/v1MtzZ0R9w09v6gb\nSNrSiNwIUNGPhbnm9Jf+kMezsI/rkcIdoVm3KJ8CFUYy6MRPzW7iJmIVRHBb82v1\nmAYCCQFU6IRtFIa9hQ8wedWwxqXZekSNS+6NB37dmmQB9kz2E3MY+KRLigOh4i3p\nCZ1ti3HVvMa9Rlgk9FmoWExzub5ECChqwm+vn8yFXjYW7kUSClcV2xx4nbQWqjrR\nyyLk6W2BNOuCFVvz0j+5XkpLAt7tljtVZc+572HBEKpF2mAdmAip5NzeDhKqucJ+\nZQIDAQAB\n-----END PUBLIC KEY-----
+    networks:
+      - stand
+    mem_limit: 1g
+    logging: *logging
+  bi-data-api:
+    image: ghcr.io/datalens-tech/datalens-data-api:0.2457.0
+    container_name: bi-data-api
+    hostname: bi-data-api
+    profiles:
+      - lab5
+      - lab8
+      - lab9
+    restart: unless-stopped
+    depends_on:
+      bi-db:
+        condition: service_healthy
+    environment:
+      GUNICORN_WORKERS_COUNT: "5"
+      RQE_FORCE_OFF: "1"
+      CACHES_ON: "0"
+      MUTATIONS_CACHES_ON: "0"
+      RQE_SECRET_KEY: ""
+      DL_CRY_ACTUAL_KEY_ID: KEY
+      DL_CRY_KEY_VAL_ID_KEY: ZGF0YWxlbnN1bnNlY3VyZWZlcm5ldGNyeXB0b2tleQo=
+      BI_COMPENG_PG_ON: "1"
+      BI_COMPENG_PG_URL: postgres://pg-user:postgres@bi-db:5432/pg-compeng-db
+      US_HOST: http://bi-us:8080
+      US_MASTER_TOKEN: us-master-token
+      US_DYNAMIC_AUTH_PRIVATE_KEY: ----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQC/t8SWhHjhZ9wY\n+XkgfAkcCJUQNzuAaMZN02MBw2XU00NLRb1AvRziJ8gNNr0kl/45KYYvUAw8++ON\nzX3XRNqmyEohkU/Ob2DTMBL99dcybaGGhmDp2AqaGD4zPV9wHfEblLRZMttqSzS8\n7cdQX6kJj7SCIkYgKbWsvPEyZOQ9HFfdMSiGq+XEJzUy+gMvfCkS1EujIRuFc6cr\ndBQxVok3KxQJrPuWWXW1p3eTxDyLGbaNUPkdb2BhssQcG2ADwxQatxRpfLJa3PXx\n3igr07kTE2TG+hD4AuQa+lIFeTttUxG9cHVFFBH2vpiPlPdnQOWZQy7DiME/paIZ\nlnE3bMyDAgMBAAECggEAEj1Og69ovLEf3HRnlLKYP0WFwPwwOgA91Yul4LYRSxUq\nUs/4uF8Fj3KPcsphZkjbk96ieH/aGjcwp/4D2eYgEzv86YKkoBQylwT82ZJ4/cA2\nXNEOCVFXeN+Tk1ZkbQs8NA6Kte3DuDIde1f33Wqsb09vse3G1CqDsUJshAnbOQD9\n9i7r2WiG9dhLrC8kKDgvk86cLOhkS9Uc/iVz4s/MndHM8oV7ZirK+txCo5qUim2D\ngiclwpJy22UbWI3P3pMui41gFRNqei2HvroOsXlK59PEkUl7t2ffr6uPN4VfarfK\nA4QUab9J2YrfJ6NF8+tKtJmRSrE2mVVHv/YEJd8pyQKBgQDzxlM8c+xJ+9vi/X/E\nogCMX1b0nh8rApiyB7dlXjFDZA28HCpCANftSlEkGiYfRLdraEGgeboCxhxkHlw2\nWQsi0q43zOW9lZ8YNJ20FoK1uQ4xgoN3+I5F74d+tkKKpgEOPkypLFzcR5477Q0M\nXUpItLE33Q01Z56D/Fc5X7HKpQKBgQDJVR3O03Y4xmUgLg22bcWGnKdC67E1xIg7\nVsuq/thFOXTZSj6Hq9V91yWmtNCmx5fLoXC9nSvs0406w9kDI1iuh/dNwCA7sfwi\ndfDyZgnCzX2G0b5eKmDn7flL+ig9kIoxWLSIEdSAQNrHsdQEMy0SaCbOXWiQtReJ\novv1s7WaBwKBgQDVCv9Vds4LPmRF9VuDQj2OcAfzknkUwpkmBZ5epboR9lAWlNrN\ngiUzSN6u2Xd1nj1aTewEzj0lDXRkfzABg0I7NbpyI8yoKim3IsysRXwISuk/lZtF\n7uCP+C0HLUvsFfYYN5QRySaCkMiWAK6FnsY70kaK1tIjWSJsoMyt5JbhzQKBgQCL\nqHx93Rfz+ENr2CZw9qJ/ZylrdX0+0+7AYsvy+Mbi9iFFHYhUqnD00wpuIp1eI7P7\ncCh5j45JwNIGApcF4z4AC5cUGwMBBczlxrR2ISwCMnMx00rfnTwNhnlZJ9VEJ4CF\nDIhmnx+uO87HmWZ951YLn63Tlt4TC1uhgSqQXLHLfwKBgQDcB8xT4cFQeMl7s/UQ\nXADCPT5cMESI68ZVUXVFVYYQ/ysABoZ021oK2YQFbFBBEtwZuwpULZns1HxcaaYJ\nl8XZGyVYgJ9wtdxd/LP07aly6Bc4fUNQN+FegbYDWXka/5YNXYnN3HIcGH1ywWpB\npfbgT6nJ84w3xsyB+nw93ZzXkw==\n-----END PRIVATE KEY-----
+      AUTH__TYPE: NATIVE
+      AUTH__JWT_ALGORITHM: PS256
+      AUTH__JWT_KEY: -----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA+HICDZMfimMIiGdd0dPr\n2N3zxHOJqiVXuvUj/aBBS7c8760rJUh4344sP/0Gid558yH/v1MtzZ0R9w09v6gb\nSNrSiNwIUNGPhbnm9Jf+kMezsI/rkcIdoVm3KJ8CFUYy6MRPzW7iJmIVRHBb82v1\nmAYCCQFU6IRtFIa9hQ8wedWwxqXZekSNS+6NB37dmmQB9kz2E3MY+KRLigOh4i3p\nCZ1ti3HVvMa9Rlgk9FmoWExzub5ECChqwm+vn8yFXjYW7kUSClcV2xx4nbQWqjrR\nyyLk6W2BNOuCFVvz0j+5XkpLAt7tljtVZc+572HBEKpF2mAdmAip5NzeDhKqucJ+\nZQIDAQAB\n-----END PUBLIC KEY-----
+    networks:
+      - stand
+    mem_limit: 1500m
+    logging: *logging
+  bi-auth:
+    image: ghcr.io/datalens-tech/datalens-auth:0.27.0
+    container_name: bi-auth
+    hostname: bi-auth
+    profiles:
+      - lab5
+      - lab8
+      - lab9
+    restart: unless-stopped
+    depends_on:
+      bi-db:
+        condition: service_healthy
+    environment:
+      APP_INSTALLATION: opensource
+      APP_ENV: prod
+      MASTER_TOKEN: auth-master-token
+      US_MASTER_TOKEN: us-master-token
+      POSTGRES_DSN_LIST: postgres://pg-user:postgres@bi-db:5432/pg-auth-db
+      US_SURPRESS_DB_STATUS_LOGS: "true"
+      SKIP_INSTALL_DB_EXTENSIONS: "1"
+      TOKEN_PRIVATE_KEY: -----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQD4cgINkx+KYwiI\nZ13R0+vY3fPEc4mqJVe69SP9oEFLtzzvrSslSHjfjiw//QaJ3nnzIf+/Uy3NnRH3\nDT2/qBtI2tKI3AhQ0Y+Fueb0l/6Qx7Owj+uRwh2hWbconwIVRjLoxE/NbuImYhVE\ncFvza/WYBgIJAVTohG0Uhr2FDzB51bDGpdl6RI1L7o0Hft2aZAH2TPYTcxj4pEuK\nA6HiLekJnW2LcdW8xr1GWCT0WahYTHO5vkQIKGrCb6+fzIVeNhbuRRIKVxXbHHid\ntBaqOtHLIuTpbYE064IVW/PSP7leSksC3u2WO1Vlz7nvYcEQqkXaYB2YCKnk3N4O\nEqq5wn5lAgMBAAECggEAKxtE5ewP/efe9CPTMHPvqOohwIU3bpEaHrMn8nqaubNq\nXD+Ui9x+NHOrk9KoDsXOLPRKNn0NJm7JTi869oUJbuOgweRDgRpLJ62wt+GjZqVv\ntQPToK+oinVRhTfJmb1bWe2t1vwVOwmrnPtNyPeDXkQ0mDFl9Q39CyGxwmN3SrwE\ncwKM9vFXxiH60T2UHok7/BW7Usb+4WJA4ov/bEoYAzkDQUnnRzjJO1RXFWjC8//M\nXjuI0NZsQXK3LV9yukSONInevoc1MnoGHwe9UZ67tDnJigY9rd4fT6B1yiKuzLDv\noiDPdpm3plh/JnPLM16nOm7zJkmsbKG2RwfzUmLNxQKBgQD827lAPp3ePUrmRQQb\nXwqb4zNQZgDUBQc0bU6F1BxWQtx5LTafnjOYmqqhakpZrMDh69T/TwH8kbDutXcR\nMWAO96yZ1IYRqsrorz4i4bCww1wDTpn7Aqz0xPkJqAucrfkUYoELf/Fl4P1dq4bs\n4OkuMLtHefI2qd/3utQOhEnauwKBgQD7iD94k9RHpHL0vb4n4Jb2EC4I/se3J1Ls\n0F37veMCQXOFKuWrka81DsqdRxu/wqZI4fkMnIe7NjGro2FFZg8MA3i4I6v3KRv9\nRyTrLNXspIESjZ2oAkuVT9npRf86whvZa2H3n4bIowJHwak3lF63xq6jnVZlCkQL\nTEhlRMFJXwKBgAmMlrtpYfbho7F8i8Io3bKzat2vbHqVUgdV1XBSaVuMnNzqqzRt\n+g7aUHVWGUa3snUVve6CYlXSfrcVHVEF51XJXrhUgVerdoxBCfyxP0X9qrzpPAFx\nwWxg//KwaPfazhxJ+AuiIlCxpX/jGW5atBOtfXUektojojSt1pJRxqQ/AoGAPcXd\nSKCNjratYLvEmoiGqpGYrK7dn3Zx4CTgH/YnbSNj2n2JgBQ8QjyKuAuBnhuQuO9+\nOYGrt+d8VVm/hsqkwV+M4zQnhIC9FfvF7lfJhd90r3jGEj/WDipZKvf80ZJgQooj\nuiucb2PRKIxAIZ03kcyikR4P3KqjwV6PnQdArOMCgYBwBq8mBNlJwYUuLruQ1RM7\n5LbP1e8C/YZ75N3CLPA14kDoW8qYC6X+KCQQgPXlQGDvTzAxg382NV53704H4ZAh\nPVuwnoZzVs9VgOHduu8nUHHzh8+ukl+fX9dyzq/wjulx8fXcRewTXh9I892EjcJy\nBG41O8RqoSHlssbZaJnugw==\n-----END PRIVATE KEY-----
+      TOKEN_PUBLIC_KEY: -----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA+HICDZMfimMIiGdd0dPr\n2N3zxHOJqiVXuvUj/aBBS7c8760rJUh4344sP/0Gid558yH/v1MtzZ0R9w09v6gb\nSNrSiNwIUNGPhbnm9Jf+kMezsI/rkcIdoVm3KJ8CFUYy6MRPzW7iJmIVRHBb82v1\nmAYCCQFU6IRtFIa9hQ8wedWwxqXZekSNS+6NB37dmmQB9kz2E3MY+KRLigOh4i3p\nCZ1ti3HVvMa9Rlgk9FmoWExzub5ECChqwm+vn8yFXjYW7kUSClcV2xx4nbQWqjrR\nyyLk6W2BNOuCFVvz0j+5XkpLAt7tljtVZc+572HBEKpF2mAdmAip5NzeDhKqucJ+\nZQIDAQAB\n-----END PUBLIC KEY-----
+      AUTH_ADMIN_PASSWORD: student
+      AUTH_SIGNUP_DISABLED: "true"
+      UI_APP_ENDPOINT: ""
+      DISABLE_WILDCARD_COOKIE: "true"
+    networks:
+      - stand
+    mem_limit: 512m
+    logging: *logging
+  bi-meta-manager:
+    image: ghcr.io/datalens-tech/datalens-meta-manager:0.52.0
+    container_name: bi-meta-manager
+    hostname: bi-meta-manager
+    profiles:
+      - lab5
+      - lab8
+      - lab9
+    restart: unless-stopped
+    depends_on:
+      bi-temporal:
+        condition: service_healthy
+      bi-ui-api:
+        condition: service_started
+    environment:
+      APP_INSTALLATION: opensource
+      APP_ENV: prod
+      APP_PORT: "8080"
+      US_MASTER_TOKEN: us-master-token
+      EXPORT_DATA_VERIFICATION_KEY: export-data-verification-key
+      POSTGRES_DSN_LIST: postgres://pg-user:postgres@bi-db:5432/pg-meta-manager-db
+      US_ENDPOINT: http://bi-us:8080
+      UI_API_ENDPOINT: http://bi-ui-api:8080
+      TEMPORAL_ENDPOINT: bi-temporal:7233
+      TEMPORAL_AUTH_ENABLED: "true"
+      TEMPORAL_AUTH_PRIVATE_KEY: -----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEAqHLHK4aK5RGhTqbk5SYUeNtJDdP2wNR7e45Q+fKAdnR51rxC\nXIJdg11d4UkkkzwmwblFEzCQt0dFHrnsHNso3YU3bM4xPsxKRdJ4L4+nH7fcj4lH\nKpl1PosNBi/py7dtJLGOFktEhZ4YvtB9Fqq6o/kF0hPhuTm1mzyoYAN4Aisch3ZY\nw8WjPFYZPUqLqi+OEUyuYU8j36I7uxybpw55pSvnCHCtxuxSuX1er14fCplX8yik\nnc2ePY7dOwTM9iS1aMcWoobQOuyda3Vp2opznassgcnXkgAj+1e1vosDahc98nXb\nExyMRDzJglLUmF+wb1/jaNClK48bX+CihRxOKQIDAQABAoIBADk06cE1axxKdX7R\nnTDZUuCMkG3ay5VHVDxs48FPAyO3gN1ViDAEsh936PcmsP4z0nG+KuBOgQdNdALw\nX2iZYXKB2IXiLMVH+f1mchys67QQ7B3vIDUucqvv61drlDn0LGPmzPtzSm0aeQrs\noV6+Uq53Vuu2htUx7SQwYHpjEzGgx03WDwwPze7rf/jsVZAILpW3z2Na/514rOtO\n7Kd5c4U+3YDcfQuQyp4PTW4h6VQm/TBalvR26bYKdcdB5UR0s1tply0zUxPmA/Rm\nseJpKhfnUipKvQMPdaEvEGVJO3GeHiCc2ssULWXDPc/cpg4V66w3zP939NRsWaG9\n47H6fJECgYEA2qvCkj30yl7LbjgW1O/eYUH9BXQrialYLGx8sO275cocV+dGfDLg\na2PHzYUWDhEXYM/sBCR19p/agcG9TPDkHTSheuNoDxIz8Q8BuCB9C5FA51flL6vd\neyKcdnq0KlL0qSGMAD3twuGDh2p54dWcUM3lUPhcq6FCfnsE5TZY6t0CgYEAxTQ3\nq5VqCtVQEQy4hZNW+fjdBKoT9cM4TsZ9IqFrkkt/+JVBLP0G8bYYz+pB6E2GsFPP\n89EdnRecu/qQxfXLQ8oKpBOP4o7tVMTEgQatmbmPuzxycABmiVLf65tfrcxvRKCS\nH9hzHVPyn6BQOZfZeL/id5Q5ioqkayKhLYLdfb0CgYEAgmQfLqMBH9csyPlrK+go\nm6gEn0bpWzn+mObL55irDVfaVNRU5GRWC9NA5h0wzIyGezUgkEvJh5lEa1FCdunB\nrGSg0a1edHYvQNPo+4lr5wTjRc/UmvuJow49bCy41/AFcgDOAarr5uQgURQ9v1tn\nzYso7YJbiAAtrUvf3Gnu1YUCgYAW0U7rtJMbg8kK3/ztv7mdnNT9+CvtENSQENlj\ny2el+sRo3+Q1r2VBTH+cdw9/MJE4D8qM/JI/nf7NpVVhAmqtglAu4fCRF1aQq1/N\nSheGJPljgcAAA5vZodQ077pnYrMxLp8ZvjK7nv4AyEzgDRjlptYuXeE2jYout0gM\n+wpjxQKBgAkaphyQPD0hsv9Q3+CRXzmFX9XL3NEcQtNUv/h5Iq3DgctgGkG0qeJP\ns4qhnarh6IFQZf53j35AUuIp45A6C26xkvS0NoTi/J9Q4xNkgl4aaPQ6h/t9aqIH\nGofbNqb4LSXato4Kxh4BEGCv6X6kbi//xGCQ2JMkZgt1bOmM6r+e\n-----END RSA PRIVATE KEY-----
+      AUTH_ENABLED: "true"
+      AUTH_TOKEN_PUBLIC_KEY: -----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA+HICDZMfimMIiGdd0dPr\n2N3zxHOJqiVXuvUj/aBBS7c8760rJUh4344sP/0Gid558yH/v1MtzZ0R9w09v6gb\nSNrSiNwIUNGPhbnm9Jf+kMezsI/rkcIdoVm3KJ8CFUYy6MRPzW7iJmIVRHBb82v1\nmAYCCQFU6IRtFIa9hQ8wedWwxqXZekSNS+6NB37dmmQB9kz2E3MY+KRLigOh4i3p\nCZ1ti3HVvMa9Rlgk9FmoWExzub5ECChqwm+vn8yFXjYW7kUSClcV2xx4nbQWqjrR\nyyLk6W2BNOuCFVvz0j+5XkpLAt7tljtVZc+572HBEKpF2mAdmAip5NzeDhKqucJ+\nZQIDAQAB\n-----END PUBLIC KEY-----
+    networks:
+      - stand
+    mem_limit: 512m
+    logging: *logging
+  bi-temporal:
+    image: ghcr.io/datalens-tech/datalens-temporal:1.27.2
+    container_name: bi-temporal
+    hostname: bi-temporal
+    profiles:
+      - lab5
+      - lab8
+      - lab9
+    restart: unless-stopped
+    depends_on:
+      bi-db:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: bi-db
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: pg-user
+      POSTGRES_DB: pg-temporal-db
+      POSTGRES_DB_VISIBILITY: pg-temporal-visibility-db
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_TLS_ENABLED: "false"
+      POSTGRES_TLS_DISABLE_HOST_VERIFICATION: "true"
+      POSTGRES_TLS_CA_FILE: ""
+      TEMPORAL_AUTH_ENABLED: "true"
+      TEMPORAL_AUTH_PUBLIC_KEY: -----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqHLHK4aK5RGhTqbk5SYU\neNtJDdP2wNR7e45Q+fKAdnR51rxCXIJdg11d4UkkkzwmwblFEzCQt0dFHrnsHNso\n3YU3bM4xPsxKRdJ4L4+nH7fcj4lHKpl1PosNBi/py7dtJLGOFktEhZ4YvtB9Fqq6\no/kF0hPhuTm1mzyoYAN4Aisch3ZYw8WjPFYZPUqLqi+OEUyuYU8j36I7uxybpw55\npSvnCHCtxuxSuX1er14fCplX8yiknc2ePY7dOwTM9iS1aMcWoobQOuyda3Vp2opz\nnassgcnXkgAj+1e1vosDahc98nXbExyMRDzJglLUmF+wb1/jaNClK48bX+CihRxO\nKQIDAQAB\n-----END PUBLIC KEY-----
+      TEMPORAL_AUTH_PRIVATE_KEY: -----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEAqHLHK4aK5RGhTqbk5SYUeNtJDdP2wNR7e45Q+fKAdnR51rxC\nXIJdg11d4UkkkzwmwblFEzCQt0dFHrnsHNso3YU3bM4xPsxKRdJ4L4+nH7fcj4lH\nKpl1PosNBi/py7dtJLGOFktEhZ4YvtB9Fqq6o/kF0hPhuTm1mzyoYAN4Aisch3ZY\nw8WjPFYZPUqLqi+OEUyuYU8j36I7uxybpw55pSvnCHCtxuxSuX1er14fCplX8yik\nnc2ePY7dOwTM9iS1aMcWoobQOuyda3Vp2opznassgcnXkgAj+1e1vosDahc98nXb\nExyMRDzJglLUmF+wb1/jaNClK48bX+CihRxOKQIDAQABAoIBADk06cE1axxKdX7R\nnTDZUuCMkG3ay5VHVDxs48FPAyO3gN1ViDAEsh936PcmsP4z0nG+KuBOgQdNdALw\nX2iZYXKB2IXiLMVH+f1mchys67QQ7B3vIDUucqvv61drlDn0LGPmzPtzSm0aeQrs\noV6+Uq53Vuu2htUx7SQwYHpjEzGgx03WDwwPze7rf/jsVZAILpW3z2Na/514rOtO\n7Kd5c4U+3YDcfQuQyp4PTW4h6VQm/TBalvR26bYKdcdB5UR0s1tply0zUxPmA/Rm\nseJpKhfnUipKvQMPdaEvEGVJO3GeHiCc2ssULWXDPc/cpg4V66w3zP939NRsWaG9\n47H6fJECgYEA2qvCkj30yl7LbjgW1O/eYUH9BXQrialYLGx8sO275cocV+dGfDLg\na2PHzYUWDhEXYM/sBCR19p/agcG9TPDkHTSheuNoDxIz8Q8BuCB9C5FA51flL6vd\neyKcdnq0KlL0qSGMAD3twuGDh2p54dWcUM3lUPhcq6FCfnsE5TZY6t0CgYEAxTQ3\nq5VqCtVQEQy4hZNW+fjdBKoT9cM4TsZ9IqFrkkt/+JVBLP0G8bYYz+pB6E2GsFPP\n89EdnRecu/qQxfXLQ8oKpBOP4o7tVMTEgQatmbmPuzxycABmiVLf65tfrcxvRKCS\nH9hzHVPyn6BQOZfZeL/id5Q5ioqkayKhLYLdfb0CgYEAgmQfLqMBH9csyPlrK+go\nm6gEn0bpWzn+mObL55irDVfaVNRU5GRWC9NA5h0wzIyGezUgkEvJh5lEa1FCdunB\nrGSg0a1edHYvQNPo+4lr5wTjRc/UmvuJow49bCy41/AFcgDOAarr5uQgURQ9v1tn\nzYso7YJbiAAtrUvf3Gnu1YUCgYAW0U7rtJMbg8kK3/ztv7mdnNT9+CvtENSQENlj\ny2el+sRo3+Q1r2VBTH+cdw9/MJE4D8qM/JI/nf7NpVVhAmqtglAu4fCRF1aQq1/N\nSheGJPljgcAAA5vZodQ077pnYrMxLp8ZvjK7nv4AyEzgDRjlptYuXeE2jYout0gM\n+wpjxQKBgAkaphyQPD0hsv9Q3+CRXzmFX9XL3NEcQtNUv/h5Iq3DgctgGkG0qeJP\ns4qhnarh6IFQZf53j35AUuIp45A6C26xkvS0NoTi/J9Q4xNkgl4aaPQ6h/t9aqIH\nGofbNqb4LSXato4Kxh4BEGCv6X6kbi//xGCQ2JMkZgt1bOmM6r+e\n-----END RSA PRIVATE KEY-----
+      NAMESPACES: meta-manager
+    healthcheck:
+      test:
+        - CMD
+        - /etc/temporal/healthcheck.sh
+      interval: 10s
+      retries: 6
+      timeout: 5s
+      start_period: 3s
+    networks:
+      - stand
+    mem_limit: 512m
+    logging: *logging
+  bi-db:
+    image: ghcr.io/datalens-tech/datalens-postgres:16-1.3.0
+    container_name: bi-db
+    hostname: bi-db
+    profiles:
+      - lab5
+      - lab8
+      - lab9
+    restart: unless-stopped
+    environment:
+      HC: "0"
+      CONTROL_API_CRYPTO_KEY: ZGF0YWxlbnN1bnNlY3VyZWZlcm5ldGNyeXB0b2tleQo=
+      US_ENDPOINT: http://bi-us:8080
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5432"
+      POSTGRES_MAX_CONNECTIONS: "512"
+      POSTGRES_USER: pg-user
+      POSTGRES_DB_COMPENG: pg-compeng-db
+      POSTGRES_DB_AUTH: pg-auth-db
+      POSTGRES_DB_US: pg-us-db
+      POSTGRES_DB_DEMO: pg-demo-db
+      POSTGRES_DB_META_MANAGER: pg-meta-manager-db
+      POSTGRES_DB_TEMPORAL: pg-temporal-db
+      POSTGRES_DB_TEMPORAL_VISIBILITY: pg-temporal-visibility-db
+      POSTGRES_PASSWORD: postgres
+      INIT_DEMO_DATA: "0"
+      INIT_DB_DEMO: "0"
+      INIT_DB_AUTH: "1"
+      INIT_DB_META_MANAGER: "1"
+      INIT_DB_TEMPORAL: "1"
+      INIT_EXTERNAL_POSTGRES: "0"
+    healthcheck:
+      test:
+        - CMD
+        - pg_isready
+        - -d
+        - pg-us-db
+        - -U
+        - pg-user
+      interval: 10s
+      retries: 6
+      timeout: 5s
+      start_period: 3s
+    volumes:
+      - ./data/bi-datalens:/var/lib/postgresql/data
+    networks:
+      - stand
+    mem_limit: 768m
+    logging: *logging

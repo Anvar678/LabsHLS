@@ -1,0 +1,70 @@
+# Ось stream, значение flink. Роль `stream`: веб-интерфейс на 8083.
+# Checkpoint'ы (раз в минуту: каждая фиксация — снимок таблицы-приёмника и
+# новые файлы) и точки сохранения — на диске стенда (data/stream/flink),
+# поэтому задание восстанавливает состояние после перезапуска стенда.
+# Переменных .env у сервисов нет: Flink SQL их не подставляет, а пересоздание
+# `stream` из-за правки .env снимало бы работающее задание.
+x-logging: &logging
+  driver: json-file
+  options: {max-size: 10m, max-file: "3"}
+
+services:
+  stream:
+    image: bigdata-stand/flink:1
+    build:
+      context: ./services/flink
+    container_name: stream
+    hostname: stream
+    profiles: [lab8]
+    restart: unless-stopped
+    command: ["jobmanager"]
+    environment:
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: stream
+        jobmanager.memory.process.size: 1024m
+        taskmanager.memory.process.size: 1536m
+        taskmanager.numberOfTaskSlots: 2
+        parallelism.default: 1
+        state.backend.type: rocksdb
+        execution.checkpointing.interval: 1min
+        execution.checkpointing.dir: file:///opt/flink/state/checkpoints
+        execution.checkpointing.savepoint-dir: file:///opt/flink/state/savepoints
+        execution.checkpointing.externalized-checkpoint-retention: RETAIN_ON_CANCELLATION
+    volumes:
+      - ./data/stream/flink:/opt/flink/state
+      - ${JOBS_DIR:-./jobs}:/opt/jobs:ro
+    ports: ["${PORT_STREAM:-8083}:8081"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8081/overview"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+    networks: [stand]
+    mem_limit: 1500m
+    logging: *logging
+
+  stream-worker:
+    image: bigdata-stand/flink:1
+    container_name: stream-worker
+    profiles: [lab8]
+    restart: unless-stopped
+    depends_on: [stream]
+    command: ["taskmanager"]
+    environment:
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: stream
+        taskmanager.memory.process.size: 1536m
+        taskmanager.numberOfTaskSlots: 2
+        state.backend.type: rocksdb
+        execution.checkpointing.dir: file:///opt/flink/state/checkpoints
+        execution.checkpointing.savepoint-dir: file:///opt/flink/state/savepoints
+    volumes:
+      - ./data/stream/flink:/opt/flink/state
+      - ${JOBS_DIR:-./jobs}:/opt/jobs:ro
+    networks: [stand]
+    mem_limit: 2g
+    logging: *logging

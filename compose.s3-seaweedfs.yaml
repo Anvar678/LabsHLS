@@ -1,0 +1,54 @@
+# Ось s3, значение seaweedfs. Роль `s3`: API на 9000, веб-интерфейс на 9001.
+x-logging: &logging
+  driver: json-file
+  options: {max-size: 10m, max-file: "3"}
+
+services:
+  s3:
+    image: chrislusf/seaweedfs:4.46
+    container_name: s3
+    hostname: s3
+    profiles: [lab3, lab4, lab5, lab6, lab7, lab8, lab9]
+    restart: unless-stopped
+    command: >
+      server -dir=/data -ip=s3
+      -master.volumeSizeLimitMB=1024
+      -volume.max=0
+      -filer -filer.port=9001
+      -s3 -s3.port=9000 -s3.config=/etc/seaweedfs/s3.json
+    volumes:
+      - ./data/s3-seaweedfs:/data
+      - ./services/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+    ports: ["${PORT_S3:-9000}:9000", "${PORT_S3_UI:-9001}:9001"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9001/"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    networks: [stand]
+    mem_limit: 2g
+    logging: *logging
+
+  # Bucket озера создаётся один раз; ключ доступа задан в services/seaweedfs/s3.json.
+  s3-init:
+    image: chrislusf/seaweedfs:4.46
+    container_name: s3-init
+    profiles: [lab3, lab4, lab5, lab6, lab7, lab8, lab9]
+    restart: "no"
+    depends_on:
+      s3: {condition: service_healthy}
+    environment:
+      S3_BUCKET: ${S3_BUCKET}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -eu
+        shell() { echo "$1" | weed shell -master=s3:9333 -filer=s3:9001; }
+        if shell "s3.bucket.list" | grep -qw "$S3_BUCKET"; then
+          echo "s3: bucket $S3_BUCKET есть"
+        else
+          shell "s3.bucket.create -name $S3_BUCKET"
+          echo "s3: bucket $S3_BUCKET создан"
+        fi
+    networks: [stand]
+    logging: *logging

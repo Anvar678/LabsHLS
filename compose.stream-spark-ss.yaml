@@ -1,0 +1,32 @@
+# Ось stream, значение spark-ss. Роль `stream`: потоковое задание того же
+# движка, что и пакетный; отдельного сервера нет, задание работает в фоне:
+# `docker compose run -d --name stream-job --service-ports stream …`.
+# Веб-интерфейс задания — на 8083, checkpoint'ы — в data/stream/spark.
+# У `up` профиля lab8 контейнер без команды сразу завершается (код 0).
+# Подключение к каталогу таблиц — тот же файл conf/spark/spark-defaults.conf,
+# что у пакетного движка. Заданию виден весь .env: контейнер `stream-job`
+# создаёт `run`, и `up` его не пересоздаёт.
+x-logging: &logging
+  driver: json-file
+  options: {max-size: 10m, max-file: "3"}
+
+services:
+  stream:
+    image: bigdata-stand/spark:2
+    build:
+      context: ./services/spark
+    container_name: stream
+    hostname: stream
+    profiles: [lab8]
+    env_file: [.env]
+    environment:
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+    volumes:
+      - ./data/stream/spark:/home/spark/state
+      - ${JOBS_DIR:-./jobs}:/opt/jobs:ro
+      - ${CONF_DIR:-./conf}/spark:/opt/stand/conf/spark:ro
+    ports: ["${PORT_STREAM:-8083}:4040"]
+    networks: [stand]
+    mem_limit: 3g
+    logging: *logging

@@ -1,0 +1,12 @@
+# Экземпляр Dagster на стенде: прогоны, события и расписания — в PostgreSQL
+# каталога (база dagster), журналы шагов — в домашнем каталоге на диске стенда.
+storage:
+  postgres:
+    postgres_url: postgresql+psycopg2://catalog:catalog@catalog-db:5432/dagster
+# Запуски — по одному, остальные ждут в очереди: у каждого шага Spark своя JVM,
+# и запуск по диапазону партиций иначе упирается в предел памяти оркестратора.
+concurrency:
+  runs:
+    max_concurrent_runs: 1
+telemetry:
+  enabled: false
